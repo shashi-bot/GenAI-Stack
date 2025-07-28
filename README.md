@@ -6,6 +6,23 @@ A visual, drag-and-drop platform for building intelligent AI workflows that enab
 
 This full-stack application empowers users to visually create and interact with intelligent workflows using a drag-and-drop interface. Users can build flows that handle document processing, AI-powered question answering, web search integration, and interactive chat experiences.
 
+##  Application Screenshots
+
+
+### Dashboard - Workflow Management
+![Dashboard](https://github.com/user-attachments/assets/2f1422be-5629-4e75-a7fe-010613ee6c32)
+*Main dashboard showing workflow overview, creation options, and management interface*
+
+### Workflow Builder - Visual Designer
+![Workflow Builder](https://github.com/user-attachments/assets/8854ff45-6c5e-4af7-bf81-a6366c0e97d7)
+
+*Drag-and-drop workflow builder with component library and visual canvas*
+
+### Chat Interface - AI Interaction
+![Chat Interface](https://github.com/user-attachments/assets/ff65f436-b596-4a80-bcf5-de1a3d9adb98)
+*Interactive chat modal for testing workflows and AI conversations*
+
+
 ##  Key Features
 
 - **Visual Workflow Builder**: Drag-and-drop interface using React Flow
