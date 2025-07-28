@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: workflow_db
+      POSTGRES_HOST_AUTH_METHOD: trust  # Allows passwordless connections
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d workflow_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build: .
+    command: >
+      sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    environment:
+      DATABASE_URL: postgresql://postgres@postgres:5432/workflow_db  # Use service name 'postgres'
+    
+      CHROMA_PERSIST_DIRECTORY: /app/chroma_db
+      UPLOAD_DIRECTORY: /app/uploads
+      ENVIRONMENT: development
+      DEBUG: true
+    volumes:
+      - .:/app
+      - uploads_data:/app/uploads
+      - chroma_data:/app/chroma_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+volumes:
+  postgres_data:
+  uploads_data:
+  chroma_data:
+  
