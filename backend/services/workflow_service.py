@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -9,6 +10,7 @@ from services.llm_service import LLMService
 from services.embedding_service import EmbeddingService
 from services.web_search_service import WebSearchService
 
+logger = logging.getLogger(__name__)
 class WorkflowService:
     def __init__(self, db: Session):
         self.db = db
@@ -214,7 +216,17 @@ class WorkflowService:
         context = {"user_query": user_query}
         result = await self._execute_node(start_node, context, execution_graph, nodes, workflow_data)
         
-        return result
+        # FIXED: Return the final context, not just the last node result
+        # The output component should have been executed and added its result to context
+        final_response = context.get("response") or context.get("llm_response") or result.get("response")
+        
+        return {
+            "response": final_response,
+            "llm_response": context.get("llm_response"),
+            "sources": context.get("sources", []),
+            "metadata": context.get("metadata", {})
+        }
+
 
     def _build_execution_graph(self, nodes: List[Dict], edges: List[Dict]) -> Dict[str, List[str]]:
         """Build a graph for execution order"""
@@ -233,7 +245,6 @@ class WorkflowService:
         config = node['data'].get('config', {})
 
         if component_type == 'userQuery':
-            # User query is already in context
             result = {"query": context["user_query"]}
             
         elif component_type == 'knowledgeBase':
@@ -251,40 +262,58 @@ class WorkflowService:
         else:
             raise ValueError(f"Unknown component type: {component_type}")
 
-        # Update context with result
+        # FIXED: Update context with result BEFORE executing next nodes
         context.update(result)
 
-        # Execute next nodes
+        # Execute next nodes with updated context
         next_node_ids = graph.get(node['id'], [])
         for next_node_id in next_node_ids:
             next_node = next((n for n in all_nodes if n['id'] == next_node_id), None)
             if next_node:
+                # Execute next node with updated context
                 next_result = await self._execute_node(next_node, context, graph, all_nodes, workflow_data)
+                # Update context again with next node's result
                 context.update(next_result)
 
         return result
-
     async def _execute_knowledge_base(self, config: Dict, context: Dict, workflow_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute knowledge base component"""
         user_query = context.get("user_query", "")
         document_ids = [doc['id'] for doc in config.get("selectedDocuments", [])]
         top_k = config.get("top_k", 5)
         api_key = config.get("apiKey")
+        model = config.get("model", "openai/text-embedding-3-large")  # Keep your format
 
         try:
-            # Initialize embedding service with node-specific API key
+        # Initialize embedding service with node-specific API key
             embedding_service = EmbeddingService(self.db, api_key=api_key)
-            embedding_service.generate_document_embeddings(
-                document_id=document_ids[0],
-                model=config.get("model", "openai/text-embedding-3-large"),
-                chunk_size=config.get("chunkSize", 1000),
-                chunk_overlap=config.get("chunkOverlap", 200)
-            )
+        
+        # FIXED: Check if embeddings exist first, don't regenerate every time!
+            missing_embeddings = []
+            for doc_id in document_ids:
+                validation = embedding_service.validate_document_for_embeddings(doc_id)
+                if not validation.get("valid") or validation.get("existing_embeddings", 0) == 0:
+                    missing_embeddings.append(doc_id)
+                    logger.info(f"Document {doc_id} needs embeddings")
+                else:
+                    logger.info(f"Document {doc_id} already has embeddings")
+        
+        # Only generate embeddings for documents that don't have them
+            for doc_id in missing_embeddings:
+                logger.info(f"Generating embeddings for document {doc_id}")
+                await embedding_service.generate_document_embeddings(
+                    document_id=doc_id,
+                    model=model,
+                    chunk_size=config.get("chunkSize", 1000),
+                    chunk_overlap=config.get("chunkOverlap", 200)
+                )
+        
             # Search for relevant documents
             search_results = await embedding_service.search_similar(
                 query=user_query,
                 top_k=top_k,
-                document_ids=document_ids if document_ids else None
+                document_ids=document_ids if document_ids else None,
+                model=model
             )
 
             # Combine relevant chunks
@@ -293,21 +322,24 @@ class WorkflowService:
                 for result in search_results
             ])
 
+            logger.info(f"Knowledge base found {len(search_results)} relevant chunks")
+
             return {
                 "knowledge_context": relevant_context,
                 "sources": [
                     {
-                        "document_id": result.document_id,
-                        "document_name": result.document_name,
-                        "similarity_score": result.similarity_score,
-                        "chunk_text": result.chunk_text[:200] + "..." if len(result.chunk_text) > 200 else result.chunk_text
+                     "document_id": result.document_id,
+                     "document_name": result.document_name,
+                     "similarity_score": result.similarity_score,
+                     "chunk_text": result.chunk_text[:200] + "..." if len(result.chunk_text) > 200 else result.chunk_text
                     }
                     for result in search_results
                 ]
             }
         except Exception as e:
-            print(f"Knowledge base execution failed: {e}")
-            return {"knowledge_context": "", "sources": []}
+            logger.error(f"Knowledge base execution failed: {str(e)}")
+            return {"knowledge_context": "", "sources": [], "error": str(e)}
+
 
     async def _execute_llm_engine(self, config: Dict, context: Dict, workflow_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute LLM engine component"""
@@ -321,12 +353,13 @@ class WorkflowService:
         serpapi_key = config.get("serpApi")
 
         # Initialize LLM service with node-specific API keys
-        llm_service = LLMService(api_key=api_key,  github_token=api_key if model.startswith("github://") else None)
+        llm_service = LLMService(
+            api_key=api_key,
+            github_token=api_key if api_key and api_key.startswith("gh") else None
+        )
 
         # Build prompt
-        system_prompt = "You are a helpful AI assistant."
-        if custom_prompt:
-            system_prompt = custom_prompt
+        system_prompt = custom_prompt if custom_prompt else "You are a helpful AI assistant."
 
         user_prompt = user_query
         if knowledge_context:
@@ -345,7 +378,7 @@ class WorkflowService:
                     ])
                     user_prompt += web_context
             except Exception as e:
-                print(f"Web search failed: {e}")
+                logger.error(f"Web search failed: {e}")
 
         try:
             # Generate response using LLM
@@ -356,12 +389,19 @@ class WorkflowService:
                 temperature=temperature
             )
 
+            logger.info(f"LLM generated response: {response}")  # Debug log
+            
+            # FIXED: Ensure response is properly returned
+            if not response or response.strip() == "":
+                response = "I apologize, but I couldn't generate a response. Please try again."
+                
             return {
                 "llm_response": str(response),
                 "model_used": model,
                 "web_search_used": use_web_search
             }
         except Exception as e:
+            logger.error(f"LLM execution error: {str(e)}")
             return {
                 "llm_response": f"Error generating response: {str(e)}",
                 "model_used": model,
@@ -403,17 +443,26 @@ class WorkflowService:
 
     async def _execute_output(self, config: Dict, context: Dict) -> Dict[str, Any]:
         """Execute output component"""
-        llm_response = context.get("llm_response", "No response generated")
+        # Get the LLM response from context
+        llm_response = context.get("llm_response", "")
         sources = context.get("sources", [])
         
+        logger.info(f"Output component received llm_response: {llm_response}")  # Debug log
+        
+        # FIXED: Ensure we have a valid response
+        if not llm_response or str(llm_response).strip() == "":
+            llm_response = "No response was generated. Please try again."
+            logger.warning("Output component: Empty llm_response detected")
+        
         return {
-            "response": llm_response,
+            "response": str(llm_response),  # This is what gets returned to chat
             "sources": sources,
             "metadata": {
                 "model_used": context.get("model_used"),
                 "web_search_used": context.get("web_search_used", False)
             }
         }
+
 
     def get_workflow_executions(self, workflow_id: int, skip: int = 0, limit: int = 50) -> List[WorkflowExecution]:
         """Get execution history for a workflow"""

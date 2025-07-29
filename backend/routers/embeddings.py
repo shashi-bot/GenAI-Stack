@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -29,10 +29,10 @@ async def search_embeddings(
 @router.post("/documents/{document_id}/generate")
 async def generate_document_embeddings(
     document_id: int,
-    api_key: str,  # Require API key as parameter
-    model: str,
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200,
+    api_key: str = Query(..., alias="api_key"),        # ← from query string
+    model: str = Query(...),                           # ← from query string
+    chunk_size: int = Query(1000, ge=1),               # ← from query string
+    chunk_overlap: int = Query(200, ge=0),             # ← from query string
     db: Session = Depends(get_db)
 ):
     """Generate embeddings for a specific document"""

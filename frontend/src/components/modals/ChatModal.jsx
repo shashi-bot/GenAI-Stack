@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Bot, User, Loader2, AlertCircle } from 'lucide-react';
 import { useChat } from '../../hooks/useChat';
-
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 const ChatModal = ({ isOpen, onClose, workflowId, user }) => {
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef(null);
@@ -149,7 +150,15 @@ const ChatModal = ({ isOpen, onClose, workflowId, user }) => {
                                     </div>
                                 </div>
                                 <div className={`p-3 rounded-lg ${message.message_type === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-gray-900 border border-gray-200'}`}>
-                                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                                {message.message_type === 'user' ? (
+                                  <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                                                                ) : (
+                                                                    <div className="prose prose-sm max-w-none">
+                                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                           {message.content}
+                                                                       </ReactMarkdown>
+                                                                        </div>
+                                                     )}
                                     {message.metadata_msg && message.metadata_msg.sources && (
                                         <div className="mt-2 pt-2 border-t border-gray-200">
                                             <p className="text-xs text-gray-500 mb-1">Sources:</p>

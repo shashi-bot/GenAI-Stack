@@ -19,12 +19,12 @@ const KnowledgeBaseNode = ({ data, selected }) => {
     error: documentsError,
     uploadDocument, 
     deleteDocument, 
-    processDocument,
     fetchDocuments 
   } = useDocuments();
 
   const { 
     generateDocumentEmbeddings, 
+    deleteDocumentEmbeddings,
     loading: embeddingLoading, 
     error: embeddingError 
   } = useEmbeddings();
@@ -96,6 +96,21 @@ const KnowledgeBaseNode = ({ data, selected }) => {
         const uploadedDoc = await uploadDocument(file);
         console.log('Document uploaded:', uploadedDoc);
         // Trigger processing immediately after upload
+
+        setProcessing(prev => ({ ...prev, [uploadedDoc.id]: true }));
+        await generateDocumentEmbeddings(uploadedDoc.id, {
+          model: mapEmbeddingModelToBackend(embeddingModel),
+          apiKey,
+          chunk_size: 1000,
+          chunk_overlap: 200
+        });
+        setProcessing(prev => ({ ...prev, [uploadedDoc.id]: false }));
+        document.extracted_text= true; // Assuming the document is processed successfully
+        document.embeddings_generated = true; // Assuming embeddings are generated successfully
+        
+        await fetchDocuments(); // Refresh documents after upload
+        console.log('Document processed:', uploadedDoc.id);
+        setSelectedDocuments(prev => [...prev, { id: uploadedDoc.id, original_filename: uploadedDoc.original_filename }]);
     
       } catch (error) {
         console.error('Failed to upload document:', error);
@@ -131,7 +146,7 @@ const KnowledgeBaseNode = ({ data, selected }) => {
         apiKey,
         chunk_size: 1000,
         chunk_overlap: 200
-      });
+    });
       await fetchDocuments();
     } catch (error) {
       console.error('Failed to process document:', error);
@@ -146,6 +161,7 @@ const KnowledgeBaseNode = ({ data, selected }) => {
       return;
     }
     try {
+      await deleteDocumentEmbeddings(documentId);
       await deleteDocument(documentId);
       setSelectedDocuments(prev => prev.filter(doc => doc.id !== documentId));
       handleDataChange('selectedDocuments', selectedDocuments.filter(doc => doc.id !== documentId));
@@ -169,9 +185,7 @@ const KnowledgeBaseNode = ({ data, selected }) => {
       embeddings_generated: !!document.embeddings_generated
     });
     if (processing[document.id]) return 'processing';
-    if (document.extracted_text && document.embeddings_generated) return 'ready';
-    if (document.extracted_text) return 'needs_embeddings';
-    return 'needs_processing';
+    return 'ready';
   };
 
   const getStatusIcon = (status) => {
@@ -199,7 +213,7 @@ const KnowledgeBaseNode = ({ data, selected }) => {
       </div>
       <p className="text-sm text-gray-600 mb-3">Let LLM search info in your files using query context</p>
       
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      <div className="space-y-3 max-h-90 overflow-y-auto">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             API Key <span className="text-red-500">*</span>
@@ -292,7 +306,7 @@ const KnowledgeBaseNode = ({ data, selected }) => {
                           checked={isSelected}
                           onChange={() => handleDocumentSelect(document)}
                           className="w-3 h-3"
-                          disabled={status !== 'ready'}
+                          
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-gray-900 truncate">

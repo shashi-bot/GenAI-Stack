@@ -158,7 +158,6 @@ class LLMService:
         except Exception as e:
             logger.error(f"Gemini error: {str(e)}")
             raise
-
     async def _generate_github_response(
         self,
         system_prompt: str,
@@ -170,17 +169,19 @@ class LLMService:
         if not self.github_client:
             logger.error("GitHub token not configured")
             raise ValueError("GitHub token not configured")
+        
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
         model_name = model.replace("github://", "", 1)
         try:
+            # The GitHubChatClient.chat() method returns a string directly
             response = await self.github_client.chat(
                 messages, model_name, temperature, max_tokens
             )
-            logger.info(f"GitHub response: {response.choices[0].message.content}")
-            return response.choices[0].message.content
+            logger.info(f"GitHub response received: {response}")
+            return response  # Don't access .choices[0].message.content - it's already a string!
         except Exception as e:
             logger.error(f"GitHub response error: {str(e)}")
             raise

@@ -5,6 +5,9 @@ from datetime import datetime
 from models import ChatSession, ChatMessage
 from schemas import ChatSessionCreate, ChatMessageCreate, ChatResponse
 from services.workflow_service import WorkflowService
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ChatService:
     def __init__(self, db: Session):
@@ -94,16 +97,33 @@ class ChatService:
                 user_message
             )
 
-            # Extract response from execution result
+            logger.info(f"Workflow execution completed: {execution.execution_status}")
+            logger.info(f"Execution result: {execution.execution_result}")
+
+            # FIXED: Better extraction of response from execution result
             execution_result = execution.execution_result or {}
-            response_text = str(execution_result.get("llm_response"))
+            
+            # Try to get response in order of preference
+            response_text = None
+            for key in ["response", "llm_response"]:
+                if key in execution_result and execution_result[key]:
+                    response_text = str(execution_result[key])
+                    break
+            
+            # Fallback if no response found
+            if not response_text or response_text.strip() == "":
+                response_text = "I apologize, but I couldn't generate a proper response. Please try again."
+                logger.warning(f"No valid response found in execution result: {execution_result}")
+
             sources = execution_result.get("sources", [])
             metadata = execution_result.get("metadata", {})
+
+            logger.info(f"Final response to return: {response_text}")
 
             # Add assistant message to chat history
             assistant_msg_data = ChatMessageCreate(
                 message_type="assistant",
-                content=str(response_text),
+                content=response_text,
                 metadata_msg={
                     "execution_id": execution.id,
                     "sources": sources,
@@ -113,13 +133,14 @@ class ChatService:
             self.add_message(session_id, assistant_msg_data)
 
             return ChatResponse(
-                response=str(response_text),
+                response=response_text,
                 execution_id=execution.id,
                 sources=sources,
                 metadata_msg=metadata
             )
 
         except Exception as e:
+            logger.error(f"Chat processing error: {str(e)}")
             # Add error message to chat history
             error_msg = f"Sorry, I encountered an error: {str(e)}"
             error_msg_data = ChatMessageCreate(
@@ -133,6 +154,7 @@ class ChatService:
                 response=error_msg,
                 metadata_msg={"error": True, "error_message": str(e)}
             )
+
 
     def get_chat_history(self, session_id: int, include_metadata: bool = False) -> List[dict]:
         """Get formatted chat history"""

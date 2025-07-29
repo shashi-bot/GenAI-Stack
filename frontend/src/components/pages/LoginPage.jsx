@@ -8,11 +8,15 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [hasNavigated, setHasNavigated] = useState(false);
+  // const [hasNavigated, setHasNavigated] = useState(false);
 
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
-  
+  // useEffect(() => {
+  //   if (token && user && window.location.pathname === '/login') {
+  //     navigate('/', { replace: true });
+  //   }
+  // }, [token, user, navigate]);
 
 
   const handleSubmit = async (event) => {
@@ -20,19 +24,14 @@ const LoginPage = () => {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/', { replace: true });
+      window.location.replace('/') ;
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
       setLoading(false);
     }
   };
-  useEffect(() => {
-    if (token && user && !hasNavigated) {
-      setHasNavigated(true);
-      navigate('/', { replace: true });
-    }
-  }, [token, user, hasNavigated, navigate]);
+
   
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

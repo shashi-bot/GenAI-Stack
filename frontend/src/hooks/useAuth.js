@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { authService } from '../services/authService';
 
+
 const TOKEN_KEY = 'authToken';
 
 export const useAuth = () => {
@@ -46,6 +47,8 @@ export const useAuth = () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
+    window.location.replace('/login'); // Redirect to login page
+
   }, []);
 
   const fetchUserProfile = useCallback(async (token) => {

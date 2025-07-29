@@ -82,8 +82,9 @@ const ComponentLibrary = ({ onDragStart }) => {
           <li>• Drag components to the canvas</li>
           <li>• Connect them by dragging from output to input handles</li>
           <li>• Configure each component's settings</li>
-          <li>• Test your workflow with the Output node</li>
-          <li>• Save your workflow when ready</li>
+          <li>• Select the documents from the available documents if using Knowledge Base Node</li>
+          <li>• Save your workflow first then you can start chatting with you workflow</li>
+
         </ul>
       </div>
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { LogOut } from 'lucide-react';
 
+
 const Header = () => {
   const { user, logout } = useAuth();
 
@@ -11,6 +12,7 @@ const Header = () => {
       ? user.email[0].toUpperCase()
       : 'U';
 
+  
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">

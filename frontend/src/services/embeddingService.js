@@ -7,9 +7,10 @@ export const embeddingService = {
   },
 
   // Generate document embeddings
-  generateDocumentEmbeddings: async (documentId) => {
-    return api.post(`/api/embeddings/documents/${documentId}/generate`);
-  },
+  generateDocumentEmbeddings: async (documentId, params) => {
+    const response = await api.post(`/api/embeddings/documents/${documentId}/generate?${params}`);
+    return response.data;
+},
 
   // Delete document embeddings
   deleteDocumentEmbeddings: async (documentId) => {

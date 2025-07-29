@@ -6,5 +6,6 @@ export const authService = {
   getProfile: () => api.get('/api/auth/me'),
   logout: () => {
     localStorage.removeItem('authToken');
+    
   }
 };

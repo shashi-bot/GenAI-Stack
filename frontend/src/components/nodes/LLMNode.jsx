@@ -58,7 +58,7 @@ const LLMNode = ({ data, selected }) => {
   }, [model, apiKey, prompt, temperature, webSearchEnabled, serpApi]);
 
   return (
-    <div className={`bg-white rounded-lg border-2 shadow-lg p-4 min-w-[320px] max-w-[400px] ${selected ? 'border-blue-500' : 'border-gray-200'}`} onMouseDown={(e) => e.stopPropagation()}
+    <div className={`bg-white rounded-lg border-2 shadow-lg p-4 min-w-[320px] max-w-[400px]  ${selected ? 'border-blue-500' : 'border-gray-200'}`} onMouseDown={(e) => e.stopPropagation()}
  onMouseUp={(e) => e.stopPropagation()}>
       <Handle type="target" position={Position.Left} id="context-input" className="w-3 h-3 bg-purple-400 border-2 border-white" style={{ left: -6, top: '30%' }} />
       <Handle type="target" position={Position.Left} id="query-input" className="w-3 h-3 bg-orange-400 border-2 border-white" style={{ left: -6, top: '70%' }} />
@@ -70,7 +70,7 @@ const LLMNode = ({ data, selected }) => {
       </div>
       <p className="text-sm text-gray-600 mb-3">Run queries with AI language models</p>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      <div className="space-y-3 max-h-90 overflow-y-auto">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
           <select className="w-full p-2 border border-gray-300 rounded text-sm" value={model} onChange={(e) => {setModel(e.target.value);handleDataChange('model',e.target.value);}}>
@@ -112,7 +112,7 @@ const LLMNode = ({ data, selected }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">SERP API Key</label>
             <div className="relative">
-              <input type={showSerpApi ? "text" : "password"} className="w-full p-2 border border-gray-300 rounded text-sm pr-10" value={serpApi} onChange={e => setSerpApi(e.target.value)} placeholder="Enter SERP API key" />
+              <input type={showSerpApi ? "text" : "password"} className="w-full p-2 border border-gray-300 rounded text-sm pr-10" value={serpApi} onChange={(e) => {setSerpApi(e.target.value);handleDataChange('serpApi',e.target.value)}} placeholder="Enter SERP API key" />
               <button type="button" onClick={() => setShowSerpApi(!showSerpApi)} className="absolute right-3 top-2.5">
                 {showSerpApi ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
               </button>

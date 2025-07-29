@@ -3,15 +3,16 @@ import { Handle, Position } from 'reactflow';
 import { MessageSquare, Settings, Copy, Download, Play, Square, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useWorkflows } from '../../hooks/useWorkflows';
 import { useChat } from '../../hooks/useChat';
+import { useParams } from 'react-router-dom';
 
-const OutputNode = ({ data, selected, workflowId }) => {
+const OutputNode = ({ data, selected }) => {
   const [output, setOutput] = useState(data?.output || 'Ready to display workflow output...');
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastExecution, setLastExecution] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [testQuery, setTestQuery] = useState('Tell me about this document');
   const [testMode, setTestMode] = useState(false); // Add test mode flag
-
+  const { id: workflowId } = useParams();
   // Only initialize hooks if workflowId exists
   const { executeWorkflow, loading: workflowLoading } = workflowId ? useWorkflows() : { executeWorkflow: null, loading: false };
   const { quickChat, sending: chatSending } = workflowId ? useChat(workflowId) : { quickChat: null, sending: false };

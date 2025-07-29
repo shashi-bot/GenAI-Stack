@@ -25,21 +25,36 @@ export const useEmbeddings = () => {
     }
   }, []);
 
-  const generateDocumentEmbeddings = useCallback(async (documentId) => {
+  const generateDocumentEmbeddings = useCallback(async (documentId, options = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await embeddingService.generateDocumentEmbeddings(documentId);
-      return result;
+        const {
+            model,
+            apiKey,
+            chunk_size = 1000,
+            chunk_overlap = 200
+        } = options;
+
+        // Create proper form data or query params as expected by the API
+        const params = new URLSearchParams({
+            api_key: apiKey,
+            model: model,
+            chunk_size: chunk_size.toString(),
+            chunk_overlap: chunk_overlap.toString()
+        });
+
+        const result = await embeddingService.generateDocumentEmbeddings(documentId, params);
+        return result;
     } catch (err) {
-      const errorMessage = err.response?.data?.detail || 'Failed to generate document embeddings';
-      setError(errorMessage);
-      console.error('Error generating document embeddings:', err);
-      throw err;
+        const errorMessage = err.response?.data?.detail || 'Failed to generate document embeddings';
+        setError(errorMessage);
+        console.error('Error generating document embeddings:', err);
+        throw err;
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  }, []);
+}, []);
 
   const deleteDocumentEmbeddings = useCallback(async (documentId) => {
     setLoading(true);
