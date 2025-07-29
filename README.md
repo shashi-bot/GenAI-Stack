@@ -82,14 +82,14 @@ This full-stack application empowers users to visually create and interact with 
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd no-code-workflow-builder
+cd GenAI-Stack
 ```
 
 2. **Backend Setup**
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env with your API keys and configuration
+# Edit .env with your  configuration
 docker-compose up -d  # Start PostgreSQL and ChromaDB
 pip install -r requirements.txt
 alembic upgrade head  # Run database migrations
